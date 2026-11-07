@@ -1,0 +1,2 @@
+﻿ALTER TABLE emp_tbl
+ADD [Password] NVARCHAR(MAX) NULL;
