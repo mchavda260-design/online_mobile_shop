@@ -1,4 +1,4 @@
-﻿<%@ Page Language="C#" AutoEventWireup="true" CodeBehind="ManageProducts.aspx.cs" Inherits="DataBase.Admin.ManageProducts" %>
+<%@ Page Language="C#" AutoEventWireup="true" CodeBehind="ManageProducts.aspx.cs" Inherits="DataBase.Admin.ManageProducts" %>
 
 <!DOCTYPE html>
 
@@ -36,6 +36,10 @@
             <p class="mh-subtitle">Edit or Delete product records</p>
 
             <div class="mh-card">
+                <div style="margin-bottom:14px;">
+                    <asp:Button ID="btnProdPDF" runat="server" Text="📥 Download Products PDF"
+                        CssClass="asp-button" OnClick="btnProdPDF_Click" />
+                </div>
                 <asp:GridView ID="GridView1" runat="server" AutoGenerateColumns="False"
                     DataKeyNames="Prod_Id"
                     OnRowEditing="GridView1_RowEditing"

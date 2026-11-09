@@ -6,7 +6,11 @@ using System.Web.UI;
 using System.Web.UI.WebControls;
 using System.Data.SqlClient;
 using System.Data;
-using System.Configuration;
+using System.Configuration;
+using iTextSharp.text;
+using iTextSharp.text.pdf;
+using System.IO;
+
 
 namespace DataBase.User
 {
@@ -122,5 +126,73 @@ namespace DataBase.User
         {
             Response.Redirect("~/User/OrderConfirmation.aspx");
         }
-    }
+
+        protected void btnCartPDF_Click(object sender, EventArgs e)
+        {
+            string connStr = ConfigurationManager.ConnectionStrings["ya"].ConnectionString;
+            SqlConnection con2 = new SqlConnection(connStr);
+            con2.Open();
+            SqlDataAdapter da2 = new SqlDataAdapter(
+                "select p.Prod_Name, p.Prod_Price, c.Quantity " +
+                "from Add_Products_tbl p " +
+                "INNER JOIN cart_tbl c ON p.Prod_Id = c.Cart_Prod_Id " +
+                "where c.Cart_User_Id = '" + uid + "'", con2);
+            DataSet ds2 = new DataSet();
+            da2.Fill(ds2);
+
+            Document doc = new Document(PageSize.A4, 40, 40, 60, 40);
+            MemoryStream ms = new MemoryStream();
+            PdfWriter.GetInstance(doc, ms);
+            doc.Open();
+
+            Font titleFont = FontFactory.GetFont(FontFactory.HELVETICA_BOLD, 20, new BaseColor(75, 0, 130));
+            Font headFont  = FontFactory.GetFont(FontFactory.HELVETICA_BOLD, 11, BaseColor.WHITE);
+            Font bodyFont  = FontFactory.GetFont(FontFactory.HELVETICA, 10, BaseColor.BLACK);
+            Font totalFont = FontFactory.GetFont(FontFactory.HELVETICA_BOLD, 13, new BaseColor(37, 99, 235));
+
+            Paragraph title = new Paragraph("MobileHub -- My Shopping Cart", titleFont);
+            title.Alignment = Element.ALIGN_CENTER;
+            doc.Add(title);
+            doc.Add(new Paragraph("Date: " + DateTime.Now.ToString("dd-MM-yyyy"),
+                FontFactory.GetFont(FontFactory.HELVETICA, 9, BaseColor.GRAY)));
+            doc.Add(Chunk.NEWLINE);
+
+            PdfPTable table = new PdfPTable(4);
+            table.WidthPercentage = 100;
+            table.SetWidths(new float[] { 3f, 1.5f, 1f, 1.5f });
+            BaseColor purple = new BaseColor(107, 63, 160);
+            foreach (string h in new[] { "Product Name", "Unit Price (Rs.)", "Quantity", "Total (Rs.)" })
+            {
+                PdfPCell cell = new PdfPCell(new Phrase(h, headFont));
+                cell.BackgroundColor = purple; cell.Padding = 7;
+                cell.HorizontalAlignment = Element.ALIGN_CENTER;
+                table.AddCell(cell);
+            }
+            decimal grandTotal = 0;
+            bool alt = false;
+            BaseColor light = new BaseColor(243, 240, 255);
+            foreach (DataRow row in ds2.Tables[0].Rows)
+            {
+                decimal price = Convert.ToDecimal(row["Prod_Price"]);
+                int qty = Convert.ToInt32(row["Quantity"]);
+                decimal sub = price * qty; grandTotal += sub;
+                BaseColor bg = alt ? light : BaseColor.WHITE; alt = !alt;
+                table.AddCell(new PdfPCell(new Phrase(row["Prod_Name"].ToString(), bodyFont)) { BackgroundColor = bg, Padding = 5 });
+                table.AddCell(new PdfPCell(new Phrase(price.ToString(), bodyFont)) { BackgroundColor = bg, Padding = 5, HorizontalAlignment = Element.ALIGN_CENTER });
+                table.AddCell(new PdfPCell(new Phrase(qty.ToString(), bodyFont)) { BackgroundColor = bg, Padding = 5, HorizontalAlignment = Element.ALIGN_CENTER });
+                table.AddCell(new PdfPCell(new Phrase(sub.ToString(), bodyFont)) { BackgroundColor = bg, Padding = 5, HorizontalAlignment = Element.ALIGN_CENTER });
+            }
+            doc.Add(table);
+            doc.Add(Chunk.NEWLINE);
+            doc.Add(new Paragraph("Grand Total: Rs." + grandTotal, totalFont));
+            doc.Close();
+
+            byte[] bytes = ms.ToArray();
+            Response.Clear();
+            Response.ContentType = "application/pdf";
+            Response.AddHeader("content-disposition", "attachment;filename=MyCart.pdf");
+            Response.BinaryWrite(bytes);
+            Response.End();
+        }
+    }
 }

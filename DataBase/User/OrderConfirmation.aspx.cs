@@ -6,7 +6,11 @@ using System.Web.UI;
 using System.Web.UI.WebControls;
 using System.Data.SqlClient;
 using System.Data;
-using System.Configuration;
+using System.Configuration;
+using iTextSharp.text;
+using iTextSharp.text.pdf;
+using System.IO;
+
 
 
 namespace DataBase.User
@@ -146,5 +150,86 @@ namespace DataBase.User
             Session.Abandon();
             Response.Redirect("~/Login.aspx");
         }
-    }
+
+        protected void btnDownloadPDF_Click(object sender, EventArgs e)
+        {
+            string connStr = ConfigurationManager.ConnectionStrings["ya"].ConnectionString;
+            SqlConnection con2 = new SqlConnection(connStr);
+            con2.Open();
+            SqlDataAdapter da2 = new SqlDataAdapter(
+                "select p.Prod_Name, p.Prod_Price, c.Quantity " +
+                "from Add_Products_tbl p " +
+                "INNER JOIN cart_tbl c ON p.Prod_Id = c.Cart_Prod_Id " +
+                "where c.Cart_User_Id = '" + uid + "'", con2);
+            DataSet ds2 = new DataSet();
+            da2.Fill(ds2);
+
+            Document doc = new Document(PageSize.A4, 40, 40, 60, 40);
+            MemoryStream ms = new MemoryStream();
+            PdfWriter.GetInstance(doc, ms);
+            doc.Open();
+
+            Font titleFont = FontFactory.GetFont(FontFactory.HELVETICA_BOLD, 20, new BaseColor(75, 0, 130));
+            Font headFont  = FontFactory.GetFont(FontFactory.HELVETICA_BOLD, 11, BaseColor.WHITE);
+            Font bodyFont  = FontFactory.GetFont(FontFactory.HELVETICA, 10, BaseColor.BLACK);
+            Font boldFont  = FontFactory.GetFont(FontFactory.HELVETICA_BOLD, 10, BaseColor.BLACK);
+            Font totalFont = FontFactory.GetFont(FontFactory.HELVETICA_BOLD, 13, new BaseColor(22, 163, 74));
+
+            Paragraph title = new Paragraph("MobileHub -- Order Receipt", titleFont);
+            title.Alignment = Element.ALIGN_CENTER;
+            doc.Add(title);
+            doc.Add(new Paragraph("Generated: " + DateTime.Now.ToString("dd-MM-yyyy HH:mm"),
+                FontFactory.GetFont(FontFactory.HELVETICA, 9, BaseColor.GRAY)));
+            doc.Add(Chunk.NEWLINE);
+
+            doc.Add(new Paragraph("Customer : " + lblName.Text, boldFont));
+            doc.Add(new Paragraph("Mobile   : " + lblMobile.Text, bodyFont));
+            doc.Add(new Paragraph("Address  : " + lblAddress.Text, bodyFont));
+            string payMethod = rbCOD.Checked ? "Cash on Delivery" : rbUPI.Checked ? "UPI" : "Online Payment";
+            doc.Add(new Paragraph("Payment  : " + payMethod, bodyFont));
+            doc.Add(Chunk.NEWLINE);
+
+            PdfPTable table = new PdfPTable(4);
+            table.WidthPercentage = 100;
+            table.SetWidths(new float[] { 3f, 1.5f, 1f, 1.5f });
+            BaseColor purple = new BaseColor(107, 63, 160);
+            foreach (string h in new[] { "Product Name", "Unit Price", "Qty", "Subtotal" })
+            {
+                PdfPCell cell = new PdfPCell(new Phrase(h, headFont));
+                cell.BackgroundColor = purple; cell.Padding = 7;
+                cell.HorizontalAlignment = Element.ALIGN_CENTER;
+                table.AddCell(cell);
+            }
+            decimal subtotal = 0;
+            bool alt = false;
+            BaseColor light = new BaseColor(243, 240, 255);
+            foreach (DataRow row in ds2.Tables[0].Rows)
+            {
+                decimal price = Convert.ToDecimal(row["Prod_Price"]);
+                int qty = Convert.ToInt32(row["Quantity"]);
+                decimal sub = price * qty; subtotal += sub;
+                BaseColor bg = alt ? light : BaseColor.WHITE; alt = !alt;
+                table.AddCell(new PdfPCell(new Phrase(row["Prod_Name"].ToString(), bodyFont)) { BackgroundColor = bg, Padding = 5 });
+                table.AddCell(new PdfPCell(new Phrase("Rs." + price, bodyFont)) { BackgroundColor = bg, Padding = 5, HorizontalAlignment = Element.ALIGN_CENTER });
+                table.AddCell(new PdfPCell(new Phrase(qty.ToString(), bodyFont)) { BackgroundColor = bg, Padding = 5, HorizontalAlignment = Element.ALIGN_CENTER });
+                table.AddCell(new PdfPCell(new Phrase("Rs." + sub, bodyFont)) { BackgroundColor = bg, Padding = 5, HorizontalAlignment = Element.ALIGN_CENTER });
+            }
+            doc.Add(table);
+            doc.Add(Chunk.NEWLINE);
+            doc.Add(new Paragraph("Subtotal    : Rs." + subtotal, bodyFont));
+            doc.Add(new Paragraph("Delivery    : Rs.200", bodyFont));
+            doc.Add(new Paragraph("Grand Total : Rs." + (subtotal + 200), totalFont));
+            doc.Add(Chunk.NEWLINE);
+            doc.Add(new Paragraph("Thank you for shopping at MobileHub!",
+                FontFactory.GetFont(FontFactory.HELVETICA_OBLIQUE, 10, new BaseColor(107, 63, 160))));
+            doc.Close();
+
+            byte[] bytes = ms.ToArray();
+            Response.Clear();
+            Response.ContentType = "application/pdf";
+            Response.AddHeader("content-disposition", "attachment;filename=OrderReceipt.pdf");
+            Response.BinaryWrite(bytes);
+            Response.End();
+        }
+    }
 }

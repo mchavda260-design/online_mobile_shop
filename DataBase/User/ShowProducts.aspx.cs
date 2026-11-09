@@ -6,7 +6,11 @@ using System.Web.UI;
 using System.Web.UI.WebControls;
 using System.Data.SqlClient;
 using System.Data;
-using System.Configuration;
+using System.Configuration;
+using iTextSharp.text;
+using iTextSharp.text.pdf;
+using System.IO;
+
 
 namespace DataBase.User
 {
@@ -26,7 +30,7 @@ namespace DataBase.User
             con.Open();
         }
 
-        // Session માંથી real user ID fetch કરો
+        
         void LoadUserId()
         {
             if (Session["Admin"] != null)
@@ -80,14 +84,14 @@ namespace DataBase.User
 
         protected void Datalist_ItemCommand(object source, DataListCommandEventArgs e)
         {
-            // Session expire check
+            
             if (Session["Admin"] == null)
             {
                 Response.Redirect("~/Login.aspx");
                 return;
             }
 
-            // uid reload (PostBack વખતે)
+            
             LoadUserId();
 
             if (e.CommandName == "cmd_vdtl")
@@ -100,7 +104,7 @@ namespace DataBase.User
                 int prodId = Convert.ToInt32(e.CommandArgument);
                 int quantity = 1;
 
-                // Already in cart check
+                
                 Getcon();
                 SqlCommand checkCmd = new SqlCommand(
                     "select COUNT(*) from cart_tbl where Cart_User_Id=" + uid +
@@ -109,14 +113,14 @@ namespace DataBase.User
 
                 if (exists > 0)
                 {
-                    // Already in cart — quantity update
+                    
                     cmd = new SqlCommand(
                         "update cart_tbl set Quantity = Quantity + 1 where Cart_User_Id=" +
                         uid + " AND Cart_Prod_Id=" + prodId, con);
                 }
                 else
                 {
-                    // New item insert
+                    
                     cmd = new SqlCommand(
                         "insert into cart_tbl(Cart_User_Id, Cart_Prod_Id, Quantity, AddedDate) values(" +
                         uid + "," + prodId + "," + quantity + ", Getdate())", con);
@@ -131,7 +135,7 @@ namespace DataBase.User
         {
         }
 
-        // ✅ Image path fix — ~/  ને proper URL માં convert કરો
+       
         protected void DataListProducts_ItemDataBound(object sender, DataListItemEventArgs e)
         {
             if (e.Item.ItemType == ListItemType.Item ||
@@ -147,7 +151,7 @@ namespace DataBase.User
 
                     if (!string.IsNullOrEmpty(imgPath))
                     {
-                        // ~/Product_Images/xxx.jpg  →  /Product_Images/xxx.jpg
+                        
                         imgProduct.ImageUrl = ResolveUrl(imgPath);
                     }
                     else
@@ -157,5 +161,62 @@ namespace DataBase.User
                 }
             }
         }
-    }
+
+        protected void btnProductPDF_Click(object sender, EventArgs e)
+        {
+            string connStr = ConfigurationManager.ConnectionStrings["ya"].ConnectionString;
+            SqlConnection con2 = new SqlConnection(connStr);
+            con2.Open();
+            SqlDataAdapter da2 = new SqlDataAdapter(
+                "select p.Prod_Name, p.Prod_Model, p.Prod_Price, p.Prod_Weight, p.Prod_Config, c.Comp_Name " +
+                "from Add_Products_tbl p LEFT JOIN Add_Company_tbl c ON p.Prod_Comp_Id = c.Comp_Id", con2);
+            DataSet ds2 = new DataSet();
+            da2.Fill(ds2);
+
+            Document doc = new Document(PageSize.A4.Rotate(), 30, 30, 50, 30);
+            MemoryStream ms = new MemoryStream();
+            PdfWriter.GetInstance(doc, ms);
+            doc.Open();
+
+            Font titleFont = FontFactory.GetFont(FontFactory.HELVETICA_BOLD, 18, new BaseColor(75, 0, 130));
+            Font headFont  = FontFactory.GetFont(FontFactory.HELVETICA_BOLD, 10, BaseColor.WHITE);
+            Font bodyFont  = FontFactory.GetFont(FontFactory.HELVETICA, 9, BaseColor.BLACK);
+
+            Paragraph title = new Paragraph("MobileHub -- Products List", titleFont);
+            title.Alignment = Element.ALIGN_CENTER;
+            doc.Add(title);
+            doc.Add(new Paragraph("Total: " + ds2.Tables[0].Rows.Count + " products   |   " + DateTime.Now.ToString("dd-MM-yyyy"),
+                FontFactory.GetFont(FontFactory.HELVETICA, 9, BaseColor.GRAY)));
+            doc.Add(Chunk.NEWLINE);
+
+            PdfPTable table = new PdfPTable(6);
+            table.WidthPercentage = 100;
+            table.SetWidths(new float[] { 2.5f, 1.5f, 1.2f, 1f, 2.5f, 1.5f });
+            BaseColor purple = new BaseColor(107, 63, 160);
+            foreach (string h in new[] { "Product Name", "Model", "Price (Rs.)", "Weight", "Config", "Company" })
+            {
+                PdfPCell cell = new PdfPCell(new Phrase(h, headFont));
+                cell.BackgroundColor = purple; cell.Padding = 6;
+                cell.HorizontalAlignment = Element.ALIGN_CENTER;
+                table.AddCell(cell);
+            }
+            bool alt = false;
+            BaseColor light = new BaseColor(243, 240, 255);
+            foreach (DataRow row in ds2.Tables[0].Rows)
+            {
+                BaseColor bg = alt ? light : BaseColor.WHITE; alt = !alt;
+                foreach (string col in new[] { "Prod_Name","Prod_Model","Prod_Price","Prod_Weight","Prod_Config","Comp_Name" })
+                    table.AddCell(new PdfPCell(new Phrase(row[col].ToString(), bodyFont)) { BackgroundColor = bg, Padding = 4 });
+            }
+            doc.Add(table);
+            doc.Close();
+
+            byte[] bytes = ms.ToArray();
+            Response.Clear();
+            Response.ContentType = "application/pdf";
+            Response.AddHeader("content-disposition", "attachment;filename=ProductsList.pdf");
+            Response.BinaryWrite(bytes);
+            Response.End();
+        }
+    }
 }

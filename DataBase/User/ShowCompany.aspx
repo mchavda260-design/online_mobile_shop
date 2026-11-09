@@ -30,6 +30,11 @@
             <h1 class="mh-page-title">Mobile Companies</h1>
             <p class="mh-subtitle">Select a brand to view available smartphones and accessories</p>
 
+            <div style="text-align:center; margin-bottom:14px;">
+                <asp:Button ID="btnCompanyPDF" runat="server" Text="Download Companies PDF"
+                    CssClass="asp-button" OnClick="btnCompanyPDF_Click" />
+            </div>
+
             <div style="display: flex; justify-content: center; width: 100%;">
                 <asp:DataList ID="DataList1" runat="server" OnSelectedIndexChanged="DataList1_SelectedIndexChanged" RepeatDirection="Horizontal" RepeatColumns="3" OnItemCommand="DataList1_ItemCommand1" CssClass="mh-datalist-table">
                     <ItemTemplate>

@@ -1,4 +1,4 @@
-﻿<%@ Page Language="C#" AutoEventWireup="true" CodeBehind="ManageEmployees.aspx.cs" Inherits="DataBase.Admin.ManageEmployees" %>
+<%@ Page Language="C#" AutoEventWireup="true" CodeBehind="ManageEmployees.aspx.cs" Inherits="DataBase.Admin.ManageEmployees" %>
 
 <!DOCTYPE html>
 
@@ -63,6 +63,10 @@
 
             <%-- Employee Grid --%>
             <div class="mh-card">
+                <div style="margin-bottom:14px;">
+                    <asp:Button ID="btnEmpPDF" runat="server" Text="📥 Download Employees PDF"
+                        CssClass="asp-button" OnClick="btnEmpPDF_Click" />
+                </div>
                 <asp:GridView ID="GridView1" runat="server" AutoGenerateColumns="False"
                     DataKeyNames="Emp_Id"
                     OnRowEditing="GridView1_RowEditing"

@@ -98,7 +98,10 @@
                             <asp:Label ID="Label5" runat="server" Text="Total: &#8377; 0"></asp:Label>
                         </div>
                     </div>
-                    <asp:Button ID="Button1" runat="server" Text="Proceed to Checkout" CssClass="cart-checkout-btn" OnClick="Button1_Click" />
+                    <asp:Button ID="Button1" runat="server" Text="Proceed to Checkout" CssClass="cart-checkout-btn" OnClick="Button1_Click" />
+                    <asp:Button ID="btnCartPDF" runat="server" Text="Download Cart PDF"
+                        CssClass="asp-button" OnClick="btnCartPDF_Click"
+                        style="margin-top:10px;" />
                 </div>
             </div>
         </main>

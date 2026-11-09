@@ -32,6 +32,11 @@
             </h1>
             <p class="mh-subtitle">Browse all products or filter by company</p>
 
+            <div style="text-align:center; margin-bottom:14px;">
+                <asp:Button ID="btnProductPDF" runat="server" Text="Download Products PDF"
+                    CssClass="asp-button" OnClick="btnProductPDF_Click" />
+            </div>
+
             <div style="text-align: center;">
                 <asp:Label ID="lblNoData" runat="server" Text="No products found for this company." Visible="false"></asp:Label>
             </div>

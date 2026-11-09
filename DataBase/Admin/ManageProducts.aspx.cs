@@ -1,6 +1,10 @@
 using System;
 using System.Collections.Generic;
-using System.Configuration; // for connection string
+using System.Configuration;
+using iTextSharp.text;
+using iTextSharp.text.pdf;
+using System.IO;
+ // for connection string
 using System.Data; // for dataset
 using System.Data.SqlClient; // for connecting to sql server
 using System.Linq;
@@ -111,5 +115,62 @@ namespace DataBase.Admin
             Session.Abandon();
             Response.Redirect("~/Login.aspx");
         }
-    }
+
+        protected void btnProdPDF_Click(object sender, EventArgs e)
+        {
+            string connStr = ConfigurationManager.ConnectionStrings["ya"].ConnectionString;
+            SqlConnection con2 = new SqlConnection(connStr);
+            con2.Open();
+            SqlDataAdapter da2 = new SqlDataAdapter(
+                "select p.Prod_Name, p.Prod_Model, p.Prod_Price, p.Prod_Weight, p.Prod_Config, c.Comp_Name " +
+                "from Add_Products_tbl p LEFT JOIN Add_Company_tbl c ON p.Prod_Comp_Id = c.Comp_Id", con2);
+            DataSet ds2 = new DataSet();
+            da2.Fill(ds2);
+
+            Document doc = new Document(PageSize.A4.Rotate(), 30, 30, 50, 30);
+            MemoryStream ms = new MemoryStream();
+            PdfWriter.GetInstance(doc, ms);
+            doc.Open();
+
+            Font titleFont = FontFactory.GetFont(FontFactory.HELVETICA_BOLD, 18, new BaseColor(75, 0, 130));
+            Font headFont  = FontFactory.GetFont(FontFactory.HELVETICA_BOLD, 10, BaseColor.WHITE);
+            Font bodyFont  = FontFactory.GetFont(FontFactory.HELVETICA, 9, BaseColor.BLACK);
+
+            Paragraph title = new Paragraph("MobileHub Admin -- Products Report", titleFont);
+            title.Alignment = Element.ALIGN_CENTER;
+            doc.Add(title);
+            doc.Add(new Paragraph("Total: " + ds2.Tables[0].Rows.Count + " products   |   " + DateTime.Now.ToString("dd-MM-yyyy"),
+                FontFactory.GetFont(FontFactory.HELVETICA, 9, BaseColor.GRAY)));
+            doc.Add(Chunk.NEWLINE);
+
+            PdfPTable table = new PdfPTable(6);
+            table.WidthPercentage = 100;
+            table.SetWidths(new float[] { 2.5f, 1.5f, 1.2f, 1f, 2.5f, 1.5f });
+            BaseColor purple = new BaseColor(107, 63, 160);
+            foreach (string h in new[] { "Product Name", "Model", "Price (Rs.)", "Weight", "Config", "Company" })
+            {
+                PdfPCell cell = new PdfPCell(new Phrase(h, headFont));
+                cell.BackgroundColor = purple; cell.Padding = 6;
+                cell.HorizontalAlignment = Element.ALIGN_CENTER;
+                table.AddCell(cell);
+            }
+            bool alt = false;
+            BaseColor light = new BaseColor(243, 240, 255);
+            foreach (DataRow row in ds2.Tables[0].Rows)
+            {
+                BaseColor bg = alt ? light : BaseColor.WHITE; alt = !alt;
+                foreach (string col in new[] { "Prod_Name","Prod_Model","Prod_Price","Prod_Weight","Prod_Config","Comp_Name" })
+                    table.AddCell(new PdfPCell(new Phrase(row[col].ToString(), bodyFont)) { BackgroundColor = bg, Padding = 4 });
+            }
+            doc.Add(table);
+            doc.Close();
+
+            byte[] bytes = ms.ToArray();
+            Response.Clear();
+            Response.ContentType = "application/pdf";
+            Response.AddHeader("content-disposition", "attachment;filename=AdminProducts.pdf");
+            Response.BinaryWrite(bytes);
+            Response.End();
+        }
+    }
 }

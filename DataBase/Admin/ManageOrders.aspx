@@ -36,6 +36,10 @@
             <p class="mh-subtitle">View and manage all customer orders</p>
 
             <div class="mh-card">
+                <div style="margin-bottom:14px;">
+                    <asp:Button ID="btnOrdersPDF" runat="server" Text="📥 Download Orders PDF"
+                        CssClass="asp-button" OnClick="btnOrdersPDF_Click" />
+                </div>
                 <asp:GridView ID="GridView1" runat="server" AutoGenerateColumns="False"
                     DataKeyNames="Cart_Id"
                     OnRowDeleting="GridView1_RowDeleting"

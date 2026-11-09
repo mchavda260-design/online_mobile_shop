@@ -316,6 +316,11 @@
                     </table>
 
                     <div style="margin-top:28px; text-align:center;">
+                        <asp:Button ID="btnDownloadPDF" runat="server"
+                            Text="Download Receipt PDF"
+                            CssClass="btn-back"
+                            OnClick="btnDownloadPDF_Click"
+                            style="margin-bottom:10px; display:block; width:100%;" />
                         <asp:Button ID="btnPlaceOrder" runat="server"
                             Text="Place Order"
                             CssClass="btn-place-order"
